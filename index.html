@@ -1,0 +1,295 @@
+<html>
+	<script>
+	
+		class Shape {
+  	constructor(x,y,width, height, ctx) {
+		this.x = x;
+		this.y = y;
+		this.width = width;
+		this.height = height;
+		this.ctx = ctx;
+    }
+}
+
+class Rectangle extends Shape {
+	constructor(x,y,width, height, ctx) {
+		super (x,y,width, height, ctx);
+	}
+  
+	draw() {
+   		ctx.beginPath();
+		ctx.setLineDash([0, 0]);
+		ctx.rect(this.x-this.width/2, this.y-this.height/2, this.width, this.height);
+  		ctx.stroke();
+	}
+}
+
+class Elipse extends Shape {
+		constructor(x,y,width, height, ctx) {
+    	super (x,y,width, height, ctx);
+    }
+    
+    draw() {
+		ctx.beginPath();
+		ctx.setLineDash([0, 0]);
+		ctx.ellipse(this.x, this.y, this.width/2, this.height/2, 0, 0, 2 * Math.PI);
+		ctx.stroke();
+    }
+}
+
+function changeContent () {
+    var myelement = document.getElementById("myelement");
+    myelement.innerHTML= "New Text";
+}
+
+var x,y, offSetShapeX, offSetShapeY, snapX, snapY;
+const canvas = document.getElementById("myCanvas");
+const ctx = canvas.getContext("2d");
+var selectedShape = null;
+
+var loadedShapes = new Array();
+
+loadedShapes[0] = new Elipse(76, 75, 75, 50, ctx);
+loadedShapes[1] = new Rectangle(76, 130, 50, 50, ctx); 
+loadedShapes[2] = new Elipse(180, 75, 80, 70, ctx);
+loadedShapes[3] = new Rectangle(180, 150, 65, 70, ctx); 
+
+function down(event) {
+    event = event || window.event;
+    x = event.pageX - canvas.offsetLeft;
+    y = event.pageY - canvas.offsetTop;
+    
+    for (i = 0; i<loadedShapes.length; i++) {
+        var b = loadedShapes[i];
+        if (x>=b.x-b.width/2 && x<=b.x+b.width/2 && y>b.y-b.height/2 && y<b.y+b.height/2) {
+            b.draging = true;
+            offSetShapeX = b.x - x;
+            offSetShapeY = b.y - y;
+            selectedShape = b;
+        }
+
+    }
+}
+
+function move(event) {
+    event = event || window.event;
+    x = event.pageX - canvas.offsetLeft;
+    y = event.pageY - canvas.offsetTop;
+    
+    for (i = 0; i<loadedShapes.length; i++) {
+        var b = loadedShapes[i];
+        if (b.draging) {
+            b.x = x + offSetShapeX;
+            b.y = y + offSetShapeY; 
+        }
+    }
+}
+
+function up(event) {
+    event = event || window.event;
+    x = event.pageX - canvas.offsetLeft;
+    y = event.pageY - canvas.offsetTop;
+    
+    for (i = 0; i<loadedShapes.length; i++) {
+        var b = loadedShapes[i];
+        if (b.draging) {
+            canvasSnapX(b);
+            canvasSnapY(b);
+            b.draging = false;
+            selectedShape = null;
+        }
+    }
+}
+
+function canvasSnapX(shape) {
+	  if (shape.x - shape.width/2 < 0) {
+       shape.x = 0 + shape.width/2;
+    } else if (shape.x + shape.width/2 > canvas.width) {
+       shape.x = canvas.width - shape.width/2;
+    } else if (shape.x - shape.width/2 < canvas.width/2 && shape.x + shape.width/2 > canvas.width/2) {
+    	shape.x = canvas.width/2;
+    } else {
+       shape.x = x + offSetShapeX;
+    	 if (snapX > 0)
+    	  { 
+        	 console.log("SnapX! : " + snapX);
+          shape.x = snapX;
+          snapX = 0;
+        } 
+    }
+}
+
+function canvasSnapY(shape) {
+    if (shape.y - shape.height/2 < 0) {
+       shape.y = 0 + shape.height/2;
+    } else if (shape.y + shape.height/2 > canvas.height) {
+       shape.y = canvas.height - shape.height/2;
+    } else {
+    	 shape.y = y + offSetShapeY;
+       if (snapY > 0)
+    	  { 
+          shape.y = snapY;
+          snapY = 0;
+        } 
+    }
+}
+
+function canvasCheckBoundary(shape) {
+		 if (shape.y - shape.height/2 < 0 || shape.y + shape.height/2 > canvas.height || shape.x - shape.width/2 < 0 || shape.x + shape.width/2 > canvas.width) {
+     ctx.beginPath();
+     ctx.setLineDash([3, 5]);
+		 ctx.moveTo(1, 1); 
+		 ctx.lineTo(1, canvas.height-1); 
+     ctx.lineTo(canvas.width-1, canvas.height-1);
+     ctx.lineTo(canvas.width-1, 1);
+     ctx.lineTo(1, 1); 
+		 ctx.stroke();
+	
+	}
+}
+
+function canvasCheckCenter(shape){
+  if (shape.x - shape.width/2 < canvas.width/2 && shape.x + shape.width/2 > canvas.width/2) {
+  	 ctx.beginPath();
+     ctx.setLineDash([3, 5]);
+     ctx.moveTo(canvas.width/2, 1); 
+     ctx.lineTo(canvas.width/2, canvas.height-1); 
+		 ctx.stroke();
+  }
+}
+
+function drawAndSnap() {
+	for (i = 0; i < loadedShapes.length; i++)
+  {
+  	 var b = loadedShapes[i];
+     b.draw();
+     if (selectedShape == null || b === selectedShape) continue;
+     shapeSnapX(selectedShape, b);
+     shapeSnapY(selectedShape, b);
+  }
+}
+
+function shapeSnapX(shape, otherShape) {
+	var startX, startY, endX = 0, endY= 0;
+	var canDrawSnapLine = false;
+   
+	var shapeBegin1 =  (shape.x - Math.ceil(shape.width/2));
+	var otherShapeBegin1 = (otherShape.x - Math.ceil(otherShape.width/2));
+   
+	var shapeBegin2 =  (shape.x + Math.ceil(shape.width/2));
+	var otherShapeBegin2 = (otherShape.x + Math.ceil(otherShape.width/2));
+   
+
+	 if (shape.x == otherShape.x) {
+        startX = shape.x;
+        startY = shape.y;
+        endX = otherShape.x;
+        endY = otherShape.y;
+        canDrawSnapLine = true;
+        snapX = endX;
+        snapY = 0;
+   } else if ((shapeBegin1 < otherShapeBegin1+3 && shapeBegin1 > otherShapeBegin1-3)) {
+        startX = shape.x - shape.width/2;
+        startY = shape.y;
+        endX = otherShape.x - otherShape.width/2;
+        endY = otherShape.y;
+        canDrawSnapLine = true;
+        snapX = otherShapeBegin1 + shape.width/2;
+        snapY = 0;
+   } else if ((shapeBegin2 < otherShapeBegin2+3 && shapeBegin2 > otherShapeBegin2-3)) {
+        startX = shape.x + shape.width/2;
+        startY = shape.y;
+        endX = otherShape.x + otherShape.width/2;
+        endY = otherShape.y;
+        canDrawSnapLine = true;
+         console.log("shape! : " + shape.width/2 + " - " + otherShape.width/2);
+         snapX = otherShapeBegin2 - shape.width/2;
+         snapY = 0;
+         console.log("Snap! : " + endX + " - " + (snapX + shape.width/2));
+   }
+   if (canDrawSnapLine) { 
+   		drawSnapLine(startX, startY, endX, endY);
+   } else {
+      snapX = 0;
+   }
+   
+}
+
+function shapeSnapY(shape, otherShape) {
+	var startX, startY, endX = 0, endY = 0;
+	var canDrawSnapLine = false;
+   
+	var shapeBegin1 =  (shape.y - Math.ceil(shape.height/2));
+	var otherShapeBegin1 = (otherShape.y - Math.ceil(otherShape.height/2));
+   
+    var shapeBegin2 =  (shape.y + Math.ceil(shape.height/2));
+	var otherShapeBegin2 = (otherShape.y + Math.ceil(otherShape.height/2));
+ 
+	 if (shape.y == otherShape.y) {
+        startX = shape.x;
+        startY = shape.y;
+        endX = otherShape.x;
+        endY = otherShape.y;
+        canDrawSnapLine = true;
+        snapY = otherShape.y;
+        snapX = 0;
+   } else if ((shapeBegin1 < otherShapeBegin1+3 && shapeBegin1 > otherShapeBegin1-3)) {
+        startX = shape.x;
+        startY = shape.y - shape.height/2;
+        endX = otherShape.x;
+        endY = otherShape.y - otherShape.height/2;
+        canDrawSnapLine = true;
+        snapY = otherShapeBegin1 + shape.height/2;
+        snapX = 0;
+   } else if ((shapeBegin2 < otherShapeBegin2+3 && shapeBegin2 > otherShapeBegin2-3)) {
+        startX = shape.x;
+        startY = shape.y + shape.height/2;
+        endX = otherShape.x;
+        endY = otherShape.y + otherShape.height/2;
+        canDrawSnapLine = true;
+        snapY = otherShapeBegin2 - shape.height/2;
+        snapX = 0;
+   }
+   if (canDrawSnapLine) { 
+   		drawSnapLine(startX, startY, endX, endY);
+   } else {
+      snapY = 0;
+   }
+   
+  
+}
+
+function drawSnapLine(startX,startY, endX, endY) {
+
+	ctx.beginPath();
+	ctx.setLineDash([3, 5]);
+	ctx.moveTo(startX, startY); 
+	ctx.lineTo(endX, endY); 
+	ctx.stroke();
+}
+
+canvas.addEventListener("mousedown",down);
+canvas.addEventListener("mousemove",move);
+canvas.addEventListener("mouseup",up);
+
+function draw() {
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  
+  drawAndSnap();
+  if (selectedShape != null) {
+     canvasCheckBoundary(selectedShape);
+     canvasCheckCenter(selectedShape);
+  }
+  
+  requestAnimationFrame(draw);
+}
+
+
+window.onload = draw() ;
+
+	</script>
+	<body>
+		<div></div>
+		<canvas id="myCanvas" width="800px" height="600px"></canvas>
+	</body>
+</html>
